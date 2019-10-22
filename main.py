@@ -4,10 +4,12 @@ import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.patches import Ellipse
 import tkinter
-from tkinter import Button
+from tkinter import Button, Tk, Entry, Label, LabelFrame, Scale, HORIZONTAL
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from scipy.integrate import odeint
 import math
 import time
+from matplotlib.animation import FuncAnimation
 
 
 
@@ -71,18 +73,28 @@ def PointsVisualizeSolarSystem(point_list):
     return
 
 
-def PointsVisualize(point_list):
-    fig, ax = plt.subplots(subplot_kw={'aspect': 'equal'})
+def PointsVisualize(point_list, fig, ax):
     ax.set_xlim(-10, 10)
     ax.set_ylim(-10, 10)
-    for point in point_list:
-        width = point.m
-        height = point.m
-        ell = Ellipse((point.x, point.y), width= width, height=height, color=point.color)
-        ax.add_artist(ell)
-        ell.set_clip_box(ax.bbox)
+    N = len(point_list)
+    x = np.zeros([N])
+    y = np.zeros([N])
+    s = np.zeros([N])
+    c = []
+    for i, point in enumerate(point_list):
+        x[i] = point.x
+        y[i] = point.y
+        s[i] = point.m*100
+        c.append(point.color)
+        # width = point.m
+        # height = point.m
+        # ell = Ellipse((point.x, point.y), width= width, height=height, color=point.color)
+        # ax.add_artist(ell)
+        # ell.set_clip_box(ax.bbox)
+
+    plt.scatter(x, y, s, c)
     plt.show()
-    return
+    return fig, ax
 
 '''
 point1 = Point(1, 2, m=3, color='red')
@@ -199,17 +211,51 @@ def VerletSolve (y0, t_array, m_array):
             y[index] = y_cur
     return y
 
+
+def VerletSolveAndVisualize (point_list, t_array, fig, ax):
+    y0, m_array = GenerateInitialData(point_list)
+    N = y0.size//4
+    T = len(t_array)
+    #y = np.zeros([T, 4*N]) #вывод такого же формата как в odeint
+    #y[0] = y0
+
+    y_pred = y0
+    delta_t = t_array[1] - t_array[0]
+
+    for index, t in enumerate(t_array):
+        if t > 0:
+           # y_pred = y[index - 1]
+            t_pred = t_array[index - 1]
+            a_pred = CalculateAccelerations(y_pred, m_array)
+            print(a_pred[2 * 0], a_pred[0 + 1])
+            delta_t = t - t_pred
+            y_cur = np.zeros([4*N])
+            for i in range (0,N):
+                y_cur[4*i] = y_pred[4*i] + y_pred[4*i + 2] * delta_t + 0.5 * a_pred[2*i] * delta_t**2
+                y_cur[4*i + 1] = y_pred[4*i + 1] + y_pred[4*i + 3] * delta_t + 0.5 * a_pred[2*i + 1] * delta_t**2
+            a_cur = CalculateAccelerations(y_cur, m_array)
+            for i in range(0,N):
+                y_cur[4*i + 2] = y_pred[4*i + 2] + 0.5 * (a_pred[2*i] + a_cur[2*i]) * delta_t
+                y_cur[4*i + 3] = y_pred[4*i + 3] + 0.5 * (a_pred[2*i + 1] + a_cur[2*i + 1]) * delta_t
+           # y[index] = y_cur
+            point_list = UpdatePointList(point_list, y_cur)
+            PointsVisualize(point_list, fig, ax)
+            time.sleep(1)
+            y_pred = y_cur
+
+
+def OdeintSolveAndVisualize (point_list, t_array, fig, ax):
+    y0, m_array = GenerateInitialData(point_list)
+    y = odeint(RightPartFunc, y0, t_array, (m_array,), Jacobian)
+    for index, t in enumerate(t_array):
+        point_list = UpdatePointList(point_list, y[index])
+        PointsVisualize(point_list, fig, ax)
+        time.sleep(1)
+
 '''
 t_array = np.arange(0,3600*24, 3600)
 point_list = GenerateSolarSystem()
-N = len(point_list)
-y0, m_array = GenerateInitialData(point_list)
-y = odeint(RightPartFunc, y0, t_array, (m_array, ), Jacobian)
-#y = VerletSolve(y0, t_array, m_array)
-for index, t in enumerate(t_array):
-    point_list = UpdatePointList(point_list, y[index])
-    PointsVisualize(point_list)
-    time.sleep(1)
+
 '''
 
 
@@ -219,10 +265,62 @@ point3 = Point(-4,1, 2, -3, m=1,color='black')
 point_list = [point1, point2, point3]
 
 t_array = np.arange(0, 5, 0.5)
-y0, m_array = GenerateInitialData(point_list)
-#y = odeint(RightPartFunc, y0, t_array, (m_array, ), Jacobian)
-y = VerletSolve(y0, t_array, m_array)
-for index, t in enumerate(t_array):
-    point_list = UpdatePointList(point_list, y[index])
-    PointsVisualize(point_list)
-    time.sleep(1)
+
+# VerletSolveAndVisualize(point_list, t_array)VerletSolveAndVisualize(point_list, t_array)
+# OdeintSolveAndVisualize(point_list, t_array)
+
+'''
+
+root = Tk()
+
+
+emitter_x = Entry(width=10)
+emitter_x_label = Label(bg='white', fg='black', width=40, text='Emitter x coordinate:')
+emitter_y = Entry(width=10)
+emitter_y_label = Label(bg='white', fg='black', width=40, text='Emitter y coordinate:')
+create_emitter_button = Button(text="Create emitter")
+emitter_info_label = Label(bg='white', fg='black', width=40, text='Emitter info:')
+emitter_label = Label(bg='white', fg='black', width=40)
+
+emitter = Emitter()
+
+point_u = Entry(root, width=10)
+point_u.pack()
+point_u_label = Label(root, bg='white', fg='black', width=40, text='point u speed:')
+point_u_label.pack()
+point_v = Entry(root, width=10)
+point_v.pack()
+point_v_label = Label(root, bg='white', fg='black', width=40, text='point v speed:')
+point_v_label.pack()
+mass = Scale(root, orient=HORIZONTAL)
+mass.pack()
+point_mass_label = Label(root, bg='white', fg='black', width=40, text='point mass:')
+point_mass_label.pack()
+point_life_time = Entry(root, width=10)
+point_life_time.pack()
+point_life_time_label = Label(root, bg='white', fg='black', width=40, text='point lifetime:')
+point_life_time_label.pack()
+create_point_button = Button(root, text='Create point')
+create_point_button.pack()
+point_label = Label(root, bg='white', fg='black', width=40)
+point_label.pack()
+point_info_label = Label(root, bg='white', fg='black', width=40, text='point info:')
+point_info_label.pack()
+root.geometry('1000x600')
+
+matplotlib.use('TkAgg')
+fig, ax = plt.subplots()
+# fig = plt.figure(1)
+canvas = FigureCanvasTkAgg(fig, master=root)
+plot_widget = canvas.get_tk_widget()
+plot_widget.pack()
+
+# VerletSolveAndVisualize(point_list, t_array, fig, ax)
+animation = FuncAnimation(fig, VerletSolveAndVisualize, interval=1000)
+
+fig.canvas.draw()
+
+root.mainloop()
+'''
+fig1, ax1 = plt.subplots()
+VerletSolveAndVisualize(point_list, t_array, fig1, ax1)
