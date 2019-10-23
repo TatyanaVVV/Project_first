@@ -1,17 +1,12 @@
 import numpy as np
-import random
 import matplotlib
 import matplotlib.pyplot as plt
-from matplotlib.patches import Ellipse
-import tkinter
-from tkinter import Button, Tk, Entry, Label, LabelFrame, Scale, HORIZONTAL
+from tkinter import Button, Tk, Entry, Label, LabelFrame, Scale, HORIZONTAL, ttk, DISABLED
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from scipy.integrate import odeint
 import math
 import time
 from matplotlib.animation import FuncAnimation
-
-
 
 class Point:
     def __init__(self, x = 0, y = 0, u = 0, v = 0, m = 1, color = 'red', time = 1):
@@ -24,58 +19,21 @@ class Point:
         self.time = time
 
 class Emitter:
-    def __init__(self, x = 0, y = 0, u = 1, v = 1):
+    def __init__(self, x = 0, y = 0):
         self.x = x
         self.y = y
-        self.u = u
-        self.v = v
 
-    def GeneratePoint(self, max_m = 1, max_distance = 1, max_v = 1, max_time = 1):
-        color_list = ['red','blue','green','yellow','orange','black']
-        color = color_list[random.randint(0,5)]
-        m = max_m * random.random()
-        d = max_distance * random.random()
-        x = self.x + self.u*d
-        y = self.y + self.v*d
-        u = max_v * (2*random.random() - 1)
-        v = max_v * (2*random.random() - 1)
-        time = max_time * random.random()
-#координаты новой точки
-        point = Point(x, y, m = m, color = color, time = time)
+    def GeneratePoint(self, u = 1, v = 1, m = 1, color = 'red', time = 1 ):
+        point = Point(x = self.x, y = self.y, m = m, color = color, time = time)
         return point
 
-    def GeneratePoints(self, max_m = 1, max_distance = 1, max_v = 1, max_time = 1, N = 10):
-        point_list = []
-        for i in range(0,N):
-            point_list.append(self.GeneratePoint(max_m,max_distance,max_v,max_time))
-        return point_list
+
+point_list = []
+emitter = Emitter()
 
 
-def PointsVisualizeSolarSystem(point_list):
-    fig, ax = plt.subplots(subplot_kw={'aspect': 'equal'})
-    ax.set_xlim(-7000*1e9, 2000*1e9)
-    ax.set_ylim(-3000*1e9, 3000*1e9)
-    for point in point_list:
-        if (point.m > 1e30):
-            width = 5e10
-            height = 5e10
-        else:
-            width = math.pow(point.m , 0.13) * 3e7
-            height = math.pow(point.m , 0.13) * 3e7
-
-        ell = Ellipse((point.x, point.y), width= width, height=height, color=point.color)
-        ax.add_artist(ell)
-        ell.set_clip_box(ax.bbox)
-
-    plt.show()
-    return
-
-    return
-
-
-def PointsVisualize(point_list, fig, ax):
-    ax.set_xlim(-10, 10)
-    ax.set_ylim(-10, 10)
+def PointsScatter(point_list):
+    # fig, ax = plt.subplots()
     N = len(point_list)
     x = np.zeros([N])
     y = np.zeros([N])
@@ -84,51 +42,49 @@ def PointsVisualize(point_list, fig, ax):
     for i, point in enumerate(point_list):
         x[i] = point.x
         y[i] = point.y
-        s[i] = point.m*100
+        s[i] = point.m
         c.append(point.color)
-        # width = point.m
-        # height = point.m
-        # ell = Ellipse((point.x, point.y), width= width, height=height, color=point.color)
-        # ax.add_artist(ell)
-        # ell.set_clip_box(ax.bbox)
-
-    plt.scatter(x, y, s, c)
-    plt.show()
-    return fig, ax
-
-'''
-point1 = Point(1, 2, m=3, color='red')
-point2 = Point(3,5,m=4,color='blue')
-point3 = Point(-4,1,m=1,color='black')
+    scat = plt.scatter(x, y, s, c)
+    # plt.show()
+    return scat
 
 
-# root = tkinter.Tk()
-# root.mainloop()
-emitter = Emitter(u=1,v=2)
-button = Button(None, text="Press Me", command=lambda: PointsVisualize(emitter.GeneratePoints(max_m = 3, max_distance=10)))
-button.pack()
-button.mainloop()
-'''
-def GenerateSolarSystem ():
-    point_list = []
-    point_list.append(Point(x = 57.9*1e9, y = 0, m = 3.3, color = 'grey')) # mercury
-    point_list.append(Point(x = 108.2*1e9*math.sin(2), y = 108.2*1e9*math.cos(2), m = 1e23*48.7, color = 'cyan')) #venus
-    point_list.append(Point(x = 149.6*1e9*math.sin(1), y = 149.6*1e9*math.cos(1), m = 1e23*59.7, color = 'blue')) #earth
-    point_list.append(Point(x = 227.9*1e9*math.sin(4), y = 227.9*1e9*math.cos(4), m = 1e23*6.42, color = 'red')) #mars
-    point_list.append(Point(x = 778.3*1e9*math.sin(5.9), y = 778.3*1e9*math.cos(5.9), m = 1e23*19e3, color = 'orange')) #jupiter
-    point_list.append(Point(x = 1427*1e9*math.sin(3), y = 1427*1e9*math.cos(3), m = 1e23*5.7e3, color = 'pink')) #saturn
-    point_list.append(Point(x = 2869*1e9*math.sin(4.2), y = 2869*1e9*math.cos(4.2), m = 1e23*870, color = 'violet')) #uran
-    point_list.append(Point(x = 4496*1e9*math.sin(5), y = 4496*1e9*math.cos(5), m = 1e23*1024, color = 'green')) #neptun
-    point_list.append(Point(m = 1e23*2e7, color = 'yellow')) #sun
+def PointsScatterSolarSystem(point_list):
+    # fig, ax = plt.subplots()
+    N = len(point_list)
+    x = np.zeros([N])
+    y = np.zeros([N])
+    s = np.zeros([N])
+    c = []
+    for i, point in enumerate(point_list):
+        x[i] = point.x
+        y[i] = point.y
+        s[i] = 1
+        c.append(point.color)
+    scat = plt.scatter(x, y, s, c)
+    # plt.show()
+    return scat
+
+def UpdatePointList(point_list, y_array, delta_t):
+    del_indexes = []
+    for i, point in enumerate(point_list):
+        point.x = y_array[4*i]
+        point.y = y_array[4*i + 1]
+        point.u = y_array[4*i + 2]
+        point.v = y_array[4*i + 3]
+        point.t -= delta_t
+        if point.t <= 0:
+            del_indexes.append[i]
+
+    for index in del_indexes:
+        point_list.pop(index)
     return point_list
 
-
-def GenerateInitialData (point_list):
+def GenerateInitialData(point_list):
     N = len(point_list)
     y0 = np.zeros([4*N])
     m_array = np.zeros([N])
-    for i in range(0,N):
-        point = point_list[i]
+    for i, point in enumerate(point_list):
         y0[4*i] = point.x
         y0[4 * i + 1] = point.y
         y0[4 * i + 2] = point.u
@@ -136,7 +92,7 @@ def GenerateInitialData (point_list):
         m_array[i] = point.m
     return y0, m_array
 
-def RightPartFunc(y,t,m_array):
+def RightPartFunc(y, t, m_array):
     N = y.size//4
     f = np.zeros_like(y)
     G = 6.67e-11
@@ -153,8 +109,8 @@ def RightPartFunc(y,t,m_array):
 def Jacobian (y,t,m_array):
     N = y.size//4
     G = 6.67e-11
-    f = np.zeros([4*N,4*N])
-    for i in range (0,N):
+    f = np.zeros([4*N, 4*N])
+    for i in range(0, N):
         f[4*i,4*i+2] = 1
         f[4*i+1,4*i+3] = 1
         for j in range (0,N):
@@ -166,21 +122,11 @@ def Jacobian (y,t,m_array):
                 f[4 * i + 3, 4 * i + 1] -= G * m_array[j] / z
     return f
 
-def UpdatePointList (point_list, y_array):
-    N = len(point_list)
-    for i in range(0, N):
-        point_list[i].x = y_array[4*i]
-        point_list[i].y = y_array[4*i + 1]
-        point_list[i].u = y_array[4*i + 2]
-        point_list[i].v = y_array[4*i + 3]
-    return point_list
-
-
 def CalculateAccelerations (y, m_array):
     N = y.size//4
     a = np.zeros([2*N])
     G = 6.67e-11
-    for i in range(0,N):
+    for i in range(0, N):
         for j in range(0, N):
             if not j==i:
                 z = math.pow((y[4*i] - y[4*j])**2 + (y[4*i+1] - y[4*j+1])**2, 1.5)
@@ -212,115 +158,141 @@ def VerletSolve (y0, t_array, m_array):
     return y
 
 
-def VerletSolveAndVisualize (point_list, t_array, fig, ax):
+def VerletNextLayer(point_list, delta_t):
     y0, m_array = GenerateInitialData(point_list)
     N = y0.size//4
-    T = len(t_array)
-    #y = np.zeros([T, 4*N]) #вывод такого же формата как в odeint
-    #y[0] = y0
+    y = np.zeros_like(y0)
 
-    y_pred = y0
-    delta_t = t_array[1] - t_array[0]
+    a_pred = CalculateAccelerations(y0, m_array)
+    for i in range (0,N):
+        y[4*i] = y0[4*i] + y0[4*i + 2] * delta_t + 0.5 * a_pred[2*i] * delta_t**2
+        y[4*i + 1] = y0[4*i + 1] + y0[4*i + 3] * delta_t + 0.5 * a_pred[2*i + 1] * delta_t**2
 
-    for index, t in enumerate(t_array):
-        if t > 0:
-           # y_pred = y[index - 1]
-            t_pred = t_array[index - 1]
-            a_pred = CalculateAccelerations(y_pred, m_array)
-            print(a_pred[2 * 0], a_pred[0 + 1])
-            delta_t = t - t_pred
-            y_cur = np.zeros([4*N])
-            for i in range (0,N):
-                y_cur[4*i] = y_pred[4*i] + y_pred[4*i + 2] * delta_t + 0.5 * a_pred[2*i] * delta_t**2
-                y_cur[4*i + 1] = y_pred[4*i + 1] + y_pred[4*i + 3] * delta_t + 0.5 * a_pred[2*i + 1] * delta_t**2
-            a_cur = CalculateAccelerations(y_cur, m_array)
-            for i in range(0,N):
-                y_cur[4*i + 2] = y_pred[4*i + 2] + 0.5 * (a_pred[2*i] + a_cur[2*i]) * delta_t
-                y_cur[4*i + 3] = y_pred[4*i + 3] + 0.5 * (a_pred[2*i + 1] + a_cur[2*i + 1]) * delta_t
-           # y[index] = y_cur
-            point_list = UpdatePointList(point_list, y_cur)
-            PointsVisualize(point_list, fig, ax)
-            time.sleep(1)
-            y_pred = y_cur
+    a_cur = CalculateAccelerations(y, m_array)
+    for i in range(0,N):
+        y[4*i + 2] = y0[4*i + 2] + 0.5 * (a_pred[2*i] + a_cur[2*i]) * delta_t
+        y[4*i + 3] = y0[4*i + 3] + 0.5 * (a_pred[2*i + 1] + a_cur[2*i + 1]) * delta_t
+    point_list = UpdatePointList(point_list, y, delta_t)
+    print("next layer")
+    return point_list
 
 
-def OdeintSolveAndVisualize (point_list, t_array, fig, ax):
+def OdeintNextLayer(point_list, delta_t):
     y0, m_array = GenerateInitialData(point_list)
-    y = odeint(RightPartFunc, y0, t_array, (m_array,), Jacobian)
-    for index, t in enumerate(t_array):
-        point_list = UpdatePointList(point_list, y[index])
-        PointsVisualize(point_list, fig, ax)
-        time.sleep(1)
-
-'''
-t_array = np.arange(0,3600*24, 3600)
-point_list = GenerateSolarSystem()
-
-'''
+    t_array = np.ndarray([0, delta_t])
+    y = odeint(RightPartFunc, y0, t_array, (m_array,), Jacobian)[1]
+    point_list = UpdatePointList(point_list, y, delta_t)
+    return point_list
 
 
-point1 = Point(1, 2, 1, 3, m=3, color='red')
-point2 = Point(3,5, -3, 0, m=4,color='blue')
-point3 = Point(-4,1, 2, -3, m=1,color='black')
-point_list = [point1, point2, point3]
+def GeneratePointsFromFile(path):
+    point_list = []
+    with open(path, 'r') as fileread:
+        lines = fileread.readlines()
+    for line in lines:
+        point_info = line.split()
+        x = float(point_info[0])
+        y = float(point_info[1])
+        u = float(point_info[2])
+        v = float(point_info[3])
+        m = float(point_info[4])
+        c = point_info[5]
+        t = float(point_info[6])
+        point = Point(x, y, u, v, m, c, t)
+        point_list.append(point)
+    return point_list
 
-t_array = np.arange(0, 5, 0.5)
 
-# VerletSolveAndVisualize(point_list, t_array)VerletSolveAndVisualize(point_list, t_array)
-# OdeintSolveAndVisualize(point_list, t_array)
 
-'''
+def LoadButtonClicked():
+    point_list = GeneratePointsFromFile("C:/Users/user/Desktop/SolarSystemInfo.txt")
+    fig = plt.figure()
+    graph_canvas = FigureCanvasTkAgg(fig, master=root)
+    graph_canvas.get_tk_widget().grid(column = 2)
+
+    ax = fig.add_axes()
+    scat = PointsScatterSolarSystem(point_list)
+    # plt.show()
+    if combo.get() == "Verlet":
+        nextlayer_func = VerletNextLayer
+    else:
+        nextlayer_func = OdeintNextLayer
+    FuncAnimation(fig, lambda x: nextlayer_func(point_list, t_delta=1e10), interval=500)
+
+def EmitterButtonClicked():
+    x = float(x_entry.get())
+    y = float(y_entry.get())
+    emitter.x = x
+    emitter.y = y
+    load_button.configure(state=DISABLED)
+    plt.scatter(x, y)
+    print("new emitter created")
+    return
+
+
+
+
+
 
 root = Tk()
+root.title("Гравитационная задача N тел")
 
-
-emitter_x = Entry(width=10)
-emitter_x_label = Label(bg='white', fg='black', width=40, text='Emitter x coordinate:')
-emitter_y = Entry(width=10)
-emitter_y_label = Label(bg='white', fg='black', width=40, text='Emitter y coordinate:')
-create_emitter_button = Button(text="Create emitter")
 emitter_info_label = Label(bg='white', fg='black', width=40, text='Emitter info:')
-emitter_label = Label(bg='white', fg='black', width=40)
+emitter_info_label.grid(column=0, row=0)
 
-emitter = Emitter()
+x_label = Label(bg='white', fg='black', width=40, text='Emitter x coordinate:')
+x_label.grid(column=0, row=1)
+x_entry = Entry(width=10, text = "0.0")
+x_entry.grid(column=0, row=2)
+y_label = Label(bg='white', fg='black', width=40, text='Emitter y coordinate:')
+y_label.grid(column=0, row=3)
+y_entry = Entry(width=10, text = "0.0")
+y_entry.grid(column=0, row=4)
 
-point_u = Entry(root, width=10)
-point_u.pack()
-point_u_label = Label(root, bg='white', fg='black', width=40, text='point u speed:')
-point_u_label.pack()
-point_v = Entry(root, width=10)
-point_v.pack()
-point_v_label = Label(root, bg='white', fg='black', width=40, text='point v speed:')
-point_v_label.pack()
-mass = Scale(root, orient=HORIZONTAL)
-mass.pack()
-point_mass_label = Label(root, bg='white', fg='black', width=40, text='point mass:')
-point_mass_label.pack()
-point_life_time = Entry(root, width=10)
-point_life_time.pack()
-point_life_time_label = Label(root, bg='white', fg='black', width=40, text='point lifetime:')
-point_life_time_label.pack()
+create_emitter_button = Button(text="Create/Update emitter", command = EmitterButtonClicked)
+create_emitter_button.grid(column=0, row=5)
+
+
+point_info_label = Label(root, bg='white', fg='black', width=40, text='Point info:')
+point_info_label.grid(column=1, row=0)
+u_label = Label(root, bg='white', fg='black', width=40, text='point u speed:')
+u_label.grid(column=1, row=1)
+u_entry = Entry(root, width=10, text = "1.0")
+u_entry.grid(column=1, row=2)
+v_label = Label(root, bg='white', fg='black', width=40, text='point v speed:')
+v_label.grid(column=1, row=3)
+v_entry = Entry(root, width=10, text = "1.0")
+v_entry.grid(column=1, row=4)
+
+m_label = Label(root, bg='white', fg='black', width=40, text='point mass:')
+m_label.grid(column=1, row=5)
+m_scale = Scale(root, orient=HORIZONTAL, from_=0, to=10)
+m_scale.set(5)
+m_scale.grid(column=1, row=6)
+t_label = Label(root, bg='white', fg='black', width=40, text='point lifetime:')
+t_label.grid(column=1, row=7)
+t_entry = Entry(root, width=10, text = "100")
+t_entry.grid(column=1, row=8)
+color_label = Label(root, bg='white', fg='black', width=40, text='point color:')
+color_label.grid(column=1, row=7)
+color_entry = Entry(root, width=10, text = "green")
+color_entry.grid(column=1, row=8)
+
 create_point_button = Button(root, text='Create point')
-create_point_button.pack()
-point_label = Label(root, bg='white', fg='black', width=40)
-point_label.pack()
-point_info_label = Label(root, bg='white', fg='black', width=40, text='point info:')
-point_info_label.pack()
-root.geometry('1000x600')
+create_point_button.grid(column=1, row=9)
 
-matplotlib.use('TkAgg')
-fig, ax = plt.subplots()
-# fig = plt.figure(1)
-canvas = FigureCanvasTkAgg(fig, master=root)
-plot_widget = canvas.get_tk_widget()
-plot_widget.pack()
 
-# VerletSolveAndVisualize(point_list, t_array, fig, ax)
-animation = FuncAnimation(fig, VerletSolveAndVisualize, interval=1000)
+method_label = Label(root, bg='white', fg='black', width=40, text='Choose method:')
+method_label.grid(column=0, row=7)
+combo = ttk.Combobox(root)
+combo['values'] = ("odeint", "Verlet")
+combo.current(1)
+combo.grid(column=0, row=8)
 
-fig.canvas.draw()
 
+load_button = Button(root, text="Load point_list from file", command = LoadButtonClicked)
+load_button.grid(column = 0, row = 9)
+
+
+root.geometry('1000x1200')
 root.mainloop()
-'''
-fig1, ax1 = plt.subplots()
-VerletSolveAndVisualize(point_list, t_array, fig1, ax1)
