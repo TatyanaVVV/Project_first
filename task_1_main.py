@@ -13,6 +13,8 @@ import numpy as np
 import threading
 from scipy.integrate import odeint
 import copy
+import time
+import matplotlib.pyplot as plt
 
 import task_1_interface
 
@@ -52,8 +54,14 @@ class Particle:
 class Interface(QMainWindow, task_1_interface.Ui_MainWindow, QOpenGLWidget):
     part_list = []
     dt = 1000
+    norma=[]
+    time_norma=[]
 
     def __init__(self):
+        global norma
+        global time_norma
+        norma=[]
+        time_norma=[]
         super().__init__()
         global dt
         self.Angle_x = 0
@@ -204,6 +212,7 @@ class Interface(QMainWindow, task_1_interface.Ui_MainWindow, QOpenGLWidget):
         dt = 1000
         timerStep = dt
         global part_list
+        global norma
         x_n = []
         y_n = []
         z_n = []
@@ -249,6 +258,7 @@ class Interface(QMainWindow, task_1_interface.Ui_MainWindow, QOpenGLWidget):
         length = len(x_n)
 
         if self.method_combo.currentIndex() == 0:
+            start=time.time()
             ax_n = []
             ay_n = []
             az_n = []
@@ -313,8 +323,78 @@ class Interface(QMainWindow, task_1_interface.Ui_MainWindow, QOpenGLWidget):
                     coordinate = Coordinate(x_n1[i] / AEM, y_n1[i] / AEM, z_n1[i] / AEM)
                     velocity = Velocity(u_n1[i], v_n1[i], w_n1[i])
                     part_list.append(Particle(coordinate, velocity, m_n[i] / Earth_mass, col_n[i], t_n[i]))
-
+            print(time.time()-start)
         if self.method_combo.currentIndex() == 1:
+            start=time.time()
+
+            ax_n = []
+            ay_n = []
+            az_n = []
+            for cx, cy, cz in zip(x_n, y_n, z_n):
+                part = Coordinate(cx, cy, cz)
+                ax = []
+                ay = []
+                az = []
+                for c, m in zip(coordinate, m_n):
+                    module = part.module(c)
+                    if module > 0:
+                        ax.append(G * m * (c.x - cx) / module / module / module)
+                        ay.append(G * m * (c.y - cy) / module / module / module)
+                        az.append(G * m * (c.z - cz) / module / module / module)
+
+                ax_n.append(sum(ax))
+                ay_n.append(sum(ay))
+                az_n.append(sum(az))
+
+            x_n1 = [x + u * timerStep + 0.5 * a * timerStep ** 2
+                    for x, u, a in zip(x_n, u_n, ax_n)]
+            y_n1 = [y + v * timerStep + 0.5 * a * timerStep ** 2
+                    for y, v, a in zip(y_n, v_n, ay_n)]
+            z_n1 = [z + w * timerStep + 0.5 * a * timerStep ** 2
+                    for z, w, a in zip(z_n, w_n, az_n)]
+
+            ax_n1 = []
+            ay_n1 = []
+            az_n1 = []
+            for cx, cy, cz in zip(x_n1, y_n1, z_n1):
+                part = Coordinate(cx, cy, cz)
+                ax = []
+                ay = []
+                az = []
+                for x, y, z, m in zip(x_n1, y_n1, z_n1, m_n):
+                    c = Coordinate(x, y, z)
+                    module = part.module(c)
+                    if module > 0:
+                        ax.append(G * m * (x - cx) / module / module / module)
+                        ay.append(G * m * (y - cy) / module / module / module)
+                        az.append(G * m * (z - cz) / module / module / module)
+
+                ax_n1.append(sum(ax))
+                ay_n1.append(sum(ay))
+                az_n1.append(sum(az))
+
+            u_n1 = [u + 0.5 * (an + an1) * timerStep
+                    for u, an, an1 in zip(u_n, ax_n, ax_n1)]
+            v_n1 = [v + 0.5 * (an + an1) * timerStep
+                    for v, an, an1 in zip(v_n, ay_n, ay_n1)]
+            w_n1 = [w + 0.5 * (an + an1) * timerStep
+                    for w, an, an1 in zip(w_n, az_n, az_n1)]
+            coordinate_verlet = Coordinate(0,0,0)
+            velocity_verlet = Velocity(0,0,0)
+            part_list_verlet = []
+            if self.count_combo.currentIndex() != 5:
+                for i in range(length):
+                    coordinate_verlet = Coordinate(x_n1[i], y_n1[i], z_n1[i])
+                    velocity_verlet = Velocity(u_n1[i], v_n1[i], w_n1[i])
+                    part_list_verlet.append(Particle(coordinate_verlet, velocity_verlet, m_n[i], col_n[i], t_n[i]))
+            else:
+                for i in range(length):
+                    coordinate_verlet = Coordinate(x_n1[i] / AEM, y_n1[i] / AEM, z_n1[i] / AEM)
+                    velocity_verlet = Velocity(u_n1[i], v_n1[i], w_n1[i])
+                    part_list_verlet.append(Particle(coordinate_verlet, velocity_verlet, m_n[i]/Earth_mass, col_n[i], t_n[i]))
+            verlet_time=time.time()-start
+            start=time.time()
+
             list_of_radius_and_velocity_all = np.zeros((length, 6))
             list_of_mass_all = np.zeros(length)
             for i in range(length):
@@ -326,13 +406,59 @@ class Interface(QMainWindow, task_1_interface.Ui_MainWindow, QOpenGLWidget):
                 list_of_radius_and_velocity_all[i, 5] = w_n[i]
                 list_of_mass_all[i] = m_n[i]
             N = len(list_of_radius_and_velocity_all)
-            M = 100
+            M = 10
             T = timerStep * M
+            print(timerStep)
             init = list_of_radius_and_velocity_all.reshape((6 * N))
             time_span = np.linspace(0, T, M)
             result = odeint(self.g, init, time_span, args=(list_of_mass_all, N))
+            odeint_time=time.time()-start
             result2 = result.reshape((M, N, 6))
-
+            #print(result2)
+            x_n1=[]
+            y_n1=[] 
+            z_n1=[]
+            u_n1=[]
+            v_n1=[]
+            w_n1=[]
+            
+            for i in range(length):
+                x_n1.append(result2[1,i,0])
+                y_n1.append(result2[1,i,1])
+                z_n1.append(result2[1,i,2])
+                u_n1.append(result2[1,i,3])
+                v_n1.append(result2[1,i,4])
+                w_n1.append(result2[1,i,5])
+            part_list = []
+            if self.count_combo.currentIndex() != 5: 
+                for i in range(length):
+                    coordinate = Coordinate(x_n1[i], y_n1[i], z_n1[i])
+                    velocity = Velocity(u_n1[i], v_n1[i], w_n1[i])
+                    part_list.append(Particle(coordinate, velocity, m_n[i], col_n[i], t_n[i]))
+            else:
+                for i in range(length):
+                    coordinate = Coordinate(x_n1[i]/AEM, y_n1[i]/AEM, z_n1[i]/AEM)
+                    velocity = Velocity(u_n1[i], v_n1[i], w_n1[i])
+                    part_list.append(Particle(coordinate, velocity, m_n[i]/Earth_mass, col_n[i], t_n[i]))
+            if (len(norma)==100):
+                fig = plt.figure()
+                ax1 = fig.add_subplot(111)
+                t=np.linspace(0,timerStep*len(norma),len(norma))
+                ax1.plot(t, norma, label='Погрешность решения', color='r')
+                fig2 = plt.figure()
+                ax2 = fig2.add_subplot(111)
+                ax2.plot(t, time_norma, label='Разность времени работы алгоритмов', color='r')
+                plt.show()
+                norma.append(0)
+            if (len(norma)<100):
+                norma_cur=0
+                for i in range(length):      
+                    norma_cur=norma_cur+((part_list[i].velocity.u-part_list_verlet[i].velocity.u)**2+(part_list[i].velocity.v-part_list_verlet[i].velocity.v)**2+(part_list[i].velocity.w-part_list_verlet[i].velocity.w)**2
+                            +(part_list[i].coordinate.x-part_list_verlet[i].coordinate.x)**2+(part_list[i].coordinate.y-part_list_verlet[i].coordinate.y)**2+(part_list[i].coordinate.z-part_list_verlet[i].coordinate.z)**2)**0.5
+                norma.append(norma_cur)
+                #print(norma)
+                time_norma.append(abs(odeint_time-verlet_time))
+            
       
         if (self.timer.isActive()):
             self.gl_sys.update()
